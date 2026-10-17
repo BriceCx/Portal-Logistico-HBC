@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal de Control de Gestión, Costos y Operaciones - HBC LOGISTIC S.A.C.</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .tab-btn.active { background-color: #2563eb; color: #ffffff; font-weight: 700; box-shadow: 0 1px 3px rgba(37,99,235,0.3); }
+    .table-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+    .table-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+    .table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-100/90 text-slate-800 antialiased min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-blue-500/20">HBC</div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-black text-slate-900 tracking-tight leading-none">HBC LOGISTIC S.A.C.</h1>
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">RUC 20606348593</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">Portal Interactivo de Costos y Gestión Operativa</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+        <!-- Panel de Cuadre de Costos -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-1.5 flex items-center gap-4">
+          <div class="text-right border-r border-slate-200 pr-4">
+            <div class="text-[10px] uppercase font-bold text-slate-400 leading-none">A Pagar (Dinámico)</div>
+            <div class="text-sm font-black text-slate-700 mt-0.5" id="header-total-cost">S/ 0.00</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[10px] uppercase font-bold text-emerald-600 leading-none">Neto (Liquidación)</div>
+            <div class="text-sm font-black text-emerald-700 mt-0.5 flex items-center gap-1.5 justify-end">
+              <span id="header-oficial-neto">S/ 0.00</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="status-indicator"></span>
+            </div>
+          </div>
+        </div>
+        
+        <label class="cursor-pointer px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs">
+          <span>📁 Cargar Excel</span>
+          <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
+        </label>
+        
+        <button onclick="exportFilteredCSV()" class="px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs">
+          📥 Exportar CSV
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Loading -->
+  <div id="loading-overlay" class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-3">
+      <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-sm font-bold text-slate-800">Procesando registros y validando liquidación...</p>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Filters -->
+    <section class="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+          <span>⚡ FILTROS DINÁMICOS EN TIEMPO REAL</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="filter-counter" class="text-xs font-bold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg">0 registros listados</span>
+          <button onclick="resetFilters()" class="text-xs text-blue-600 hover:text-blue-800 font-bold hover:underline">Limpiar Filtros</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Cliente</label>
+          <select id="sel-client" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">🏢 Todos los Clientes</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Puesto / Cargo</label>
+          <select id="sel-cargo" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">👥 Todos los Puestos</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Camión / Placa</label>
+          <select id="sel-placa" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">🚛 Todas las Unidades</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Servicio Logístico</label>
+          <select id="sel-service" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">📦 Todos los Servicios</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Búsqueda Rápida</label>
+          <input type="text" id="inp-search" oninput="applyFilters()" placeholder="Buscar placa, nombre..." class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
+    </section>
+
+    <!-- KPIs -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs">
+        <div class="flex justify-between items-start">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Costo Total Bruto</span>
+          <span class="p-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs">💰</span>
+        </div>
+        <div class="text-2xl font-black text-slate-900 mt-2" id="kpi-cost">S/ 0.00</div>
+        <div class="text-xs text-slate-500 font-medium mt-1" id="kpi-base-ad">Total sin descuentos</div>
+      </div>
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs">
+        <div class="flex justify-between items-start">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Servicios Realizados</span>
+          <span class="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs">🚚</span>
+        </div>
+        <div class="text-2xl font-black text-slate-900 mt-2" id="kpi-count">0 turnos</div>
+        <div class="text-xs text-slate-500 font-medium mt-1" id="kpi-crew">0 Choferes | 0 Auxiliares</div>
+      </div>
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs">
+        <div class="flex justify-between items-start">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Costo Bruto / Turno</span>
+          <span class="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 text-xs">🎯</span>
+        </div>
+        <div class="text-2xl font-black text-emerald-600 mt-2" id="kpi-avg">S/ 0.00</div>
+      </div>
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs">
+        <div class="flex justify-between items-start">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Balanza Desviaciones</span>
+          <span class="p-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs">⚖</span>
+        </div>
+        <div class="text-2xl font-black mt-2 text-slate-700" id="kpi-dev">S/ 0.00</div>
+        <div class="text-[11px] text-slate-500 font-medium mt-1" id="kpi-dev-sub">Adicionales: S/ 0 | Descuentos: -S/ 0</div>
+      </div>
+    </section>
+
+    <!-- Tabs -->
+    <div class="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs flex gap-1.5 overflow-x-auto text-xs font-semibold text-slate-600">
+      <button onclick="navTab('dashboard')" id="btn-tab-dashboard" class="tab-btn active px-4 py-2.5 rounded-xl transition-all">📊 Vista General & Costos</button>
+      <button onclick="navTab('clientes')" id="btn-tab-clientes" class="tab-btn px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-all">🏢 Clientes & Servicios</button>
+      <button onclick="navTab('flota')" id="btn-tab-flota" class="tab-btn px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-all">🚛 Control de Flota (Placas)</button>
+      <button onclick="navTab('personal')" id="btn-tab-personal" class="tab-btn px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-all">👥 Cuadrilla & Pagos</button>
+      <button onclick="navTab('matriz')" id="btn-tab-matriz" class="tab-btn px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-all">📋 Explorador de Operaciones</button>
+    </div>
+
+    <!-- Módulo: Dashboard -->
+    <div id="module-dashboard" class="space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs lg:col-span-2 space-y-4">
+          <h3 class="font-bold text-slate-900 text-sm">Distribución de Costo Bruto por Cliente Comercial</h3>
+          <div class="space-y-3 pt-2" id="client-progress-container"></div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <h3 class="font-bold text-slate-900 text-sm">Costo Bruto por Cargo</h3>
+          <div class="space-y-3 pt-2" id="role-progress-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Módulo: Servicios -->
+    <div id="module-clientes" class="hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <h3 class="font-bold text-slate-900 text-sm sm:text-base">Catálogo de Servicios y Costeo</h3>
+          <span class="text-xs font-bold px-3 py-1 bg-blue-100 text-blue-800 rounded-lg" id="svc-count-badge">0 Servicios</span>
+        </div>
+        <div class="overflow-x-auto table-scroll">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100/80 text-slate-600 uppercase font-semibold text-[11px] border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">Servicio Logístico</th>
+                <th class="py-3 px-4">Cliente</th>
+                <th class="py-3 px-3 text-center">Jornadas</th>
+                <th class="py-3 px-4 text-right">Costo Bruto (S/)</th>
+                <th class="py-3 px-4 text-right font-black">Total A Pagar</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium text-slate-700" id="tb-services"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Módulo: Flota -->
+    <div id="module-flota" class="hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+        <h3 class="font-bold text-slate-900 text-base mb-4">Monitoreo de Eficiencia por Camión</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="fleet-card-container"></div>
+      </div>
+    </div>
+
+    <!-- Módulo: Personal -->
+    <div id="module-personal" class="hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+        <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50/50">
+          <h3 class="font-bold text-slate-900 text-base">Matriz de Pagos a Personal</h3>
+          <select id="sel-worker-sort" onchange="renderWorkerModule()" class="text-xs bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-700">
+            <option value="tot">Monto A Pagar (Mayor a Menor)</option>
+            <option value="days">Turnos Trabajados (Mayor a Menor)</option>
+            <option value="name">Nombre Alfabético</option>
+          </select>
+        </div>
+        <div class="overflow-x-auto table-scroll">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100/80 text-slate-600 uppercase font-semibold text-[11px] border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">Colaborador</th>
+                <th class="py-3 px-4">Cargo(s)</th>
+                <th class="py-3 px-3 text-center">Turnos</th>
+                <th class="py-3 px-4 text-right">Bruto (S/)</th>
+                <th class="py-3 px-4 text-right text-emerald-700">Adicionales (S/)</th>
+                <th class="py-3 px-4 text-right text-rose-700">Descuentos (S/)</th>
+                <th class="py-3 px-4 text-right font-black">A Pagar (S/)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium text-slate-700" id="tb-workers"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Módulo: Matriz -->
+    <div id="module-matriz" class="hidden space-y-4">
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+        <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <h3 class="font-bold text-slate-900 text-sm">Explorador Detallado de Asistencia (Línea por Línea)</h3>
+          <span class="text-xs font-bold text-slate-600" id="matrix-page-info">Página 1</span>
+        </div>
+        <div class="overflow-x-auto table-scroll max-h-[500px]">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100/90 text-slate-600 uppercase font-semibold text-[10px] sticky top-0 z-10 border-b border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3">Fecha</th>
+                <th class="py-2.5 px-3">Cliente</th>
+                <th class="py-2.5 px-3">Servicio</th>
+                <th class="py-2.5 px-2">Turno</th>
+                <th class="py-2.5 px-2">Placa</th>
+                <th class="py-2.5 px-3">Colaborador</th>
+                <th class="py-2.5 px-2">Cargo</th>
+                <th class="py-2.5 px-2 text-right">Bruto</th>
+                <th class="py-2.5 px-2 text-right text-emerald-700">Adic.</th>
+                <th class="py-2.5 px-2 text-right text-rose-700">Desc.</th>
+                <th class="py-2.5 px-3 text-right font-black">A Pagar</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium text-slate-700" id="tb-matrix"></tbody>
+          </table>
+        </div>
+        <div class="p-3 bg-slate-50/70 border-t border-slate-100 flex justify-between items-center text-xs">
+          <button onclick="prevMatrixPage()" id="btn-prev-page" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40">← Anterior</button>
+          <span class="text-slate-500" id="matrix-pagination-label">Mostrando 0 - 0</span>
+          <button onclick="nextMatrixPage()" id="btn-next-page" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40">Siguiente →</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let RAW_DATA = [];
+    let filteredData = [];
+    let OFICIAL_NETO = 0; // Variable global para anclar el dato de Liquidación
+    let matrixPage = 1;
+    const PAGE_SIZE = 50;
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      document.getElementById('loading-overlay').classList.remove('hidden');
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, {type: 'array'});
+          
+          // --- NUEVO: Extraer Monto Neto Oficial de la hoja LIQUIDACIÓN ---
+          OFICIAL_NETO = 0;
+          if (workbook.SheetNames.includes('LIQUIDACIÓN')) {
+            const liqSheet = workbook.Sheets['LIQUIDACIÓN'];
+            const liqData = XLSX.utils.sheet_to_json(liqSheet, {header: 1});
+            for (let r = 0; r < liqData.length; r++) {
+              for (let c = 0; c < (liqData[r] || []).length; c++) {
+                if (typeof liqData[r][c] === 'string' && liqData[r][c].toUpperCase().trim() === 'MONTO NETO') {
+                   if (liqData[r+1] && liqData[r+1][c] !== undefined) {
+                       const val = liqData[r+1][c];
+                       OFICIAL_NETO = typeof val === 'number' ? val : parseFloat(val.toString().replace(/,/g, ''));
+                   }
+                   break;
+                }
+              }
+              if (OFICIAL_NETO > 0) break;
+            }
+          }
+
+          // Cargar hoja ASISTENCIA
+          const sheetName = workbook.SheetNames.includes('ASISTENCIA') ? 'ASISTENCIA' : workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, {raw: false});
+
+          parseAndLoadData(json);
+        } catch (error) {
+          alert("Error al procesar el archivo Excel. Asegúrate de que el formato sea correcto.");
+          console.error(error);
+        } finally {
+          document.getElementById('loading-overlay').classList.add('hidden');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseAndLoadData(jsonData) {
+      RAW_DATA = [];
+      const clients = new Set();
+      const cargos = new Set();
+      const placas = new Set();
+      const services = new Set();
+
+      const parseNum = (val) => {
+        if (val === undefined || val === null || val === '') return 0;
+        if (typeof val === 'number') return val;
+        const cleaned = val.toString().replace(/,/g, '.').replace(/[^0-9.-]/g, '');
+        return parseFloat(cleaned) || 0;
+      };
+
+      jsonData.forEach(rawRow => {
+        const row = {};
+        for (let key in rawRow) {
+          const cleanKey = key.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          row[cleanKey] = rawRow[key];
+        }
+
+        const getVal = (keywords, defaultVal = '') => {
+          for (let kw of keywords) {
+            for (let key in row) {
+              if (key.includes(kw)) return row[key];
+            }
+          }
+          return defaultVal;
+        };
+
+        const bruto = parseNum(getVal(['bruto', 'monto'], 0));
+        const adic = parseNum(getVal(['adicional', 'bono', 'extra'], 0));
+        let desc = parseNum(getVal(['desc', 'penalidad', 'multa'], 0));
+        if (desc > 0) desc = -desc; 
+        
+        let aPagar = parseNum(getVal(['pagar', 'total'], 0));
+        if (aPagar === 0 && (bruto !== 0 || adic !== 0 || desc !== 0)) {
+            aPagar = bruto + adic + desc;
+        }
+
+        const c = getVal(['cliente', 'cuenta'], 'SIN CLIENTE').toString().toUpperCase().trim();
+        const r = getVal(['cargo', 'puesto', 'rol'], 'OTRO').toString().toUpperCase().trim();
+        const p = getVal(['placa', 'camion', 'unidad'], '-').toString().toUpperCase().trim();
+        const s = getVal(['servicio', 'operacion'], 'GENERAL').toString().toUpperCase().trim();
+        const n = getVal(['colaborador', 'nombre', 'personal'], 'Desconocido').toString().trim();
+        let dateStr = getVal(['fecha', 'date', 'dia'], '').toString().trim();
+        
+        if (dateStr.toLowerCase().includes('total') || c.includes('TOTAL') || n.toLowerCase().includes('total')) return;
+        if ((n === 'Desconocido' || n === '') && aPagar === 0 && bruto === 0) return;
+
+        const turno = getVal(['turno', 'jornada'], '').toString().toUpperCase().trim();
+        
+        if (turno.includes('NOCHE') && dateStr) {
+          try {
+            if (typeof getVal(['fecha', 'date'], '') === 'number') {
+              let excelDate = getVal(['fecha', 'date'], '');
+              let jsDate = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+              jsDate.setDate(jsDate.getDate() + 1);
+              dateStr = jsDate.toLocaleDateString('es-PE');
+            } else {
+              let dateParts = dateStr.split(/[-/]/);
+              if(dateParts.length >= 3 && !isNaN(parseInt(dateParts[0]))) {
+                let jsDate = dateParts[0].length === 4 
+                  ? new Date(parseInt(dateParts[0]), parseInt(dateParts[1])-1, parseInt(dateParts[2]))
+                  : new Date(parseInt(dateParts[2]), parseInt(dateParts[1])-1, parseInt(dateParts[0]));
+                jsDate.setDate(jsDate.getDate() + 1);
+                dateStr = jsDate.toLocaleDateString('es-PE');
+              }
+            }
+          } catch(e) { console.error("Error corrigiendo fecha de madrugada", e); }
+        }
+
+        clients.add(c);
+        cargos.add(r);
+        if (p !== '-') placas.add(p);
+        services.add(s);
+
+        RAW_DATA.push({ f: dateStr, c, s, t: turno, p, n, r, bruto, adic, desc, aPagar });
+      });
+
+      populateDropdowns(clients, cargos, placas, services);
+      document.getElementById('status-indicator').classList.replace('bg-emerald-500', 'bg-blue-500');
+      resetFilters();
+    }
+
+    function populateDropdowns(clients, cargos, placas, services) {
+      const createOptions = (set, defaultText) => {
+        let html = `<option value="ALL">${defaultText}</option>`;
+        Array.from(set).sort().forEach(item => {
+          html += `<option value="${item}">${item}</option>`;
+        });
+        return html;
+      };
+
+      document.getElementById('sel-client').innerHTML = createOptions(clients, '🏢 Todos los Clientes');
+      document.getElementById('sel-cargo').innerHTML = createOptions(cargos, '👥 Todos los Puestos');
+      document.getElementById('sel-placa').innerHTML = createOptions(placas, '🚛 Todas las Unidades');
+      document.getElementById('sel-service').innerHTML = createOptions(services, '📦 Todos los Servicios');
+    }
+
+    function navTab(tabName) {
+      const modules = ['dashboard', 'clientes', 'flota', 'personal', 'matriz'];
+      modules.forEach(m => {
+        document.getElementById('module-' + m).classList.add('hidden');
+        document.getElementById('btn-tab-' + m).classList.remove('active');
+      });
+      document.getElementById('module-' + tabName).classList.remove('hidden');
+      document.getElementById('btn-tab-' + tabName).classList.add('active');
+
+      if (tabName === 'personal') renderWorkerModule();
+      if (tabName === 'clientes') renderServicesModule();
+      if (tabName === 'flota') renderFleetModule();
+      if (tabName === 'matriz') renderMatrixModule();
+    }
+
+    function applyFilters() {
+      const cli = document.getElementById('sel-client').value;
+      const cargo = document.getElementById('sel-cargo').value;
+      const placa = document.getElementById('sel-placa').value;
+      const srv = document.getElementById('sel-service').value;
+      const q = document.getElementById('inp-search').value.toLowerCase().trim();
+
+      filteredData = RAW_DATA.filter(item => {
+        if (cli !== 'ALL' && item.c !== cli) return false;
+        if (cargo !== 'ALL' && !item.r.includes(cargo)) return false;
+        if (placa !== 'ALL' && item.p !== placa) return false;
+        if (srv !== 'ALL' && item.s !== srv) return false;
+        if (q) {
+          const match = item.n.toLowerCase().includes(q) || item.p.toLowerCase().includes(q);
+          if (!match) return false;
+        }
+        return true;
+      });
+
+      matrixPage = 1;
+      updateKPIs();
+      renderDashboardCharts();
+      if (!document.getElementById('module-clientes').classList.contains('hidden')) renderServicesModule();
+      if (!document.getElementById('module-flota').classList.contains('hidden')) renderFleetModule();
+      if (!document.getElementById('module-personal').classList.contains('hidden')) renderWorkerModule();
+      if (!document.getElementById('module-matriz').classList.contains('hidden')) renderMatrixModule();
+    }
+
+    function resetFilters() {
+      document.getElementById('sel-client').value = 'ALL';
+      document.getElementById('sel-cargo').value = 'ALL';
+      document.getElementById('sel-placa').value = 'ALL';
+      document.getElementById('sel-service').value = 'ALL';
+      document.getElementById('inp-search').value = '';
+      applyFilters();
+    }
+
+    function updateKPIs() {
+      const totBruto = filteredData.reduce((acc, i) => acc + i.bruto, 0);
+      const totAdic = filteredData.reduce((acc, i) => acc + i.adic, 0);
+      const totDesc = filteredData.reduce((acc, i) => acc + i.desc, 0);
+      const totAPagar = filteredData.reduce((acc, i) => acc + i.aPagar, 0);
+      
+      const count = filteredData.length;
+      const validTurns = filteredData.filter(i => i.bruto > 0).length;
+      const avg = validTurns > 0 ? (totBruto / validTurns) : 0;
+
+      const chCount = filteredData.filter(i => i.r.includes('CONDUCTOR') || i.r.includes('CHOFER')).length;
+      const axCount = filteredData.filter(i => i.r.includes('AUXILIAR')).length;
+
+      // Actualizar Header Dual
+      document.getElementById('header-total-cost').innerText = 'S/ ' + totAPagar.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      document.getElementById('header-oficial-neto').innerText = 'S/ ' + OFICIAL_NETO.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      
+      document.getElementById('kpi-cost').innerText = 'S/ ' + totBruto.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      
+      document.getElementById('kpi-count').innerText = `${count} turnos`;
+      document.getElementById('kpi-crew').innerText = `${chCount} Choferes | ${axCount} Auxiliares`;
+      document.getElementById('kpi-avg').innerText = 'S/ ' + avg.toFixed(2);
+      
+      const netDev = totAdic + totDesc;
+      const devEl = document.getElementById('kpi-dev');
+      
+      if (Math.abs(netDev) < 0.001) {
+        devEl.innerText = 'S/ 0.00';
+        devEl.className = 'text-2xl font-black mt-2 text-slate-500'; 
+      } else if (netDev > 0) {
+        devEl.innerText = '+S/ ' + netDev.toFixed(2);
+        devEl.className = 'text-2xl font-black mt-2 text-emerald-600'; 
+      } else {
+        devEl.innerText = '-S/ ' + Math.abs(netDev).toFixed(2);
+        devEl.className = 'text-2xl font-black mt-2 text-rose-600'; 
+      }
+
+      document.getElementById('kpi-dev-sub').innerText = `Adicionales: S/ ${totAdic.toFixed(0)} | Descuentos: -S/ ${Math.abs(totDesc).toFixed(0)}`;
+      document.getElementById('filter-counter').innerText = `${count} registros listados`;
+    }
+
+    function renderDashboardCharts() {
+      const cliMap = {};
+      filteredData.forEach(i => { cliMap[i.c] = (cliMap[i.c] || 0) + i.bruto; });
+      const tot = filteredData.reduce((acc, i) => acc + i.bruto, 0) || 1;
+      const sortedCli = Object.entries(cliMap).sort((a,b) => b[1] - a[1]);
+
+      const cliContainer = document.getElementById('client-progress-container');
+      cliContainer.innerHTML = '';
+      sortedCli.forEach(([name, cost]) => {
+        const pct = (cost / tot) * 100;
+        const div = document.createElement('div');
+        div.className = "space-y-1";
+        div.innerHTML = `
+          <div class="flex justify-between text-xs font-bold">
+            <span class="text-slate-800">${name}</span>
+            <span class="text-slate-900">S/ ${cost.toLocaleString('es-PE', {minimumFractionDigits: 2})} <span class="text-slate-400 font-normal">(${pct.toFixed(1)}%)</span></span>
+          </div>
+          <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div style="width: ${pct}%;" class="h-full bg-blue-600 rounded-full"></div>
+          </div>
+        `;
+        cliContainer.appendChild(div);
+      });
+
+      const roleMap = {};
+      filteredData.forEach(i => {
+        const r = i.r || 'OTROS';
+        roleMap[r] = (roleMap[r] || 0) + i.bruto;
+      });
+      const roleContainer = document.getElementById('role-progress-container');
+      roleContainer.innerHTML = '';
+      Object.entries(roleMap).sort((a,b) => b[1] - a[1]).forEach(([role, cost]) => {
+        const pct = (cost / tot) * 100;
+        const div = document.createElement('div');
+        div.className = "space-y-1";
+        div.innerHTML = `
+          <div class="flex justify-between text-xs font-bold">
+            <span class="text-slate-700">${role}</span>
+            <span class="text-slate-900">S/ ${cost.toLocaleString('es-PE', {minimumFractionDigits: 2})} <span class="text-slate-400 font-normal">(${pct.toFixed(1)}%)</span></span>
+          </div>
+          <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div style="width: ${pct}%;" class="h-full bg-indigo-500 rounded-full"></div>
+          </div>
+        `;
+        roleContainer.appendChild(div);
+      });
+    }
+
+    function renderServicesModule() {
+      const sMap = {};
+      filteredData.forEach(i => {
+        const key = i.s;
+        if (!sMap[key]) sMap[key] = { name: i.s, cli: i.c, count: 0, bruto: 0, aPagar: 0, pending: 0 };
+        sMap[key].count++;
+        sMap[key].bruto += i.bruto;
+        sMap[key].aPagar += i.aPagar;
+        if (i.bruto === 0) sMap[key].pending++;
+      });
+
+      const list = Object.values(sMap).sort((a,b) => b.bruto - a.bruto);
+      const tb = document.getElementById('tb-services');
+      tb.innerHTML = '';
+
+      list.forEach(s => {
+        const isZero = s.bruto === 0 && s.pending > 0;
+        const tr = document.createElement('tr');
+        tr.className = isZero ? "bg-rose-50 hover:bg-rose-100 transition-colors" : "hover:bg-slate-50 transition-colors";
+        
+        let nameHtml = s.name;
+        if (isZero) {
+          nameHtml += ' <span class="ml-2 text-[9px] bg-rose-500 text-white px-2 py-0.5 rounded-full shadow-sm">⚠️ NUEVO / SIN TARIFA</span>';
+        }
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-4 font-bold ${isZero ? 'text-rose-700' : 'text-slate-900'}">${nameHtml}</td>
+          <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">${s.cli}</span></td>
+          <td class="py-2.5 px-3 text-center font-bold">${s.count}</td>
+          <td class="py-2.5 px-4 text-right font-bold text-slate-700">S/ ${s.bruto.toLocaleString('es-PE', {minimumFractionDigits: 2})}</td>
+          <td class="py-2.5 px-4 text-right font-black ${isZero ? 'text-rose-500' : 'text-slate-900'}">S/ ${s.aPagar.toLocaleString('es-PE', {minimumFractionDigits: 2})}</td>
+        `;
+        tb.appendChild(tr);
+      });
+      document.getElementById('svc-count-badge').innerText = `${list.length} Servicios`;
+    }
+
+    function renderFleetModule() {
+      const fMap = {};
+      filteredData.filter(i => i.p && i.p !== '-').forEach(i => {
+        if (!fMap[i.p]) fMap[i.p] = { plate: i.p, count: 0, bruto: 0 };
+        fMap[i.p].count++;
+        fMap[i.p].bruto += i.bruto;
+      });
+
+      const container = document.getElementById('fleet-card-container');
+      container.innerHTML = '';
+      const list = Object.values(fMap).sort((a,b) => b.bruto - a.bruto);
+
+      list.forEach(f => {
+        const card = document.createElement('div');
+        card.className = `p-4.5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-3`;
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">UNIDAD</span>
+              <div class="text-xl font-black text-slate-900">${f.plate}</div>
+            </div>
+            <span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-100 text-blue-700">${f.count} Turnos</span>
+          </div>
+          <div class="pt-2 border-t border-slate-100">
+            <span class="text-[10px] uppercase font-semibold text-slate-400">Costo Bruto Generado</span>
+            <div class="text-base font-black text-slate-900">S/ ${f.bruto.toLocaleString('es-PE', {minimumFractionDigits: 2})}</div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderWorkerModule() {
+      const wMap = {};
+      filteredData.forEach(i => {
+        if (!i.n) return;
+        if (!wMap[i.n]) wMap[i.n] = { name: i.n, roles: new Set(), count: 0, bruto: 0, adic: 0, desc: 0, aPagar: 0 };
+        wMap[i.n].count++;
+        wMap[i.n].roles.add(i.r);
+        wMap[i.n].bruto += i.bruto;
+        wMap[i.n].adic += i.adic;
+        wMap[i.n].desc += i.desc;
+        wMap[i.n].aPagar += i.aPagar;
+      });
+
+      const sortMode = document.getElementById('sel-worker-sort').value;
+      const list = Object.values(wMap).sort((a,b) => {
+        if (sortMode === 'days') return b.count - a.count;
+        if (sortMode === 'name') return a.name.localeCompare(b.name);
+        return b.aPagar - a.aPagar;
+      });
+
+      const tb = document.getElementById('tb-workers');
+      tb.innerHTML = '';
+      list.forEach((w) => {
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-slate-50 transition-colors`;
+        tr.innerHTML = `
+          <td class="py-2.5 px-4 font-bold text-slate-900">${w.name}</td>
+          <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">${Array.from(w.roles).join(', ')}</span></td>
+          <td class="py-2.5 px-3 text-center font-bold text-slate-900">${w.count}</td>
+          <td class="py-2.5 px-4 text-right text-slate-600">S/ ${w.bruto.toLocaleString('es-PE', {minimumFractionDigits: 2})}</td>
+          <td class="py-2.5 px-4 text-right ${w.adic > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${w.adic > 0 ? '+S/ ' + w.adic.toFixed(2) : '-'}</td>
+          <td class="py-2.5 px-4 text-right ${w.desc < 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${w.desc < 0 ? '-S/ ' + Math.abs(w.desc).toFixed(2) : '-'}</td>
+          <td class="py-2.5 px-4 text-right font-black text-slate-900">S/ ${w.aPagar.toLocaleString('es-PE', {minimumFractionDigits: 2})}</td>
+        `;
+        tb.appendChild(tr);
+      });
+    }
+
+    function renderMatrixModule() {
+      const tb = document.getElementById('tb-matrix');
+      tb.innerHTML = '';
+      const start = (matrixPage - 1) * PAGE_SIZE;
+      const end = start + PAGE_SIZE;
+      const pageData = filteredData.slice(start, end);
+
+      pageData.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition-colors";
+        tr.innerHTML = `
+          <td class="py-2 px-3 text-slate-500 whitespace-nowrap">${item.f}</td>
+          <td class="py-2 px-3 font-semibold text-slate-800">${item.c}</td>
+          <td class="py-2 px-3 text-slate-700">${item.s}</td>
+          <td class="py-2 px-2 text-slate-500">${item.t}</td>
+          <td class="py-2 px-2 font-mono font-bold text-slate-800">${item.p}</td>
+          <td class="py-2 px-3 font-bold text-slate-900">${item.n}</td>
+          <td class="py-2 px-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">${item.r}</span></td>
+          <td class="py-2 px-2 text-right text-slate-500">S/ ${item.bruto.toFixed(2)}</td>
+          <td class="py-2 px-2 text-right ${item.adic > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${item.adic > 0 ? '+' + item.adic.toFixed(0) : '-'}</td>
+          <td class="py-2 px-2 text-right ${item.desc < 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${item.desc < 0 ? item.desc.toFixed(0) : '-'}</td>
+          <td class="py-2 px-3 text-right font-black ${item.aPagar === 0 && item.bruto === 0 ? 'text-rose-600' : 'text-slate-900'}">${item.aPagar === 0 && item.bruto === 0 ? '⚠️ Pendiente' : 'S/ ' + item.aPagar.toFixed(2)}</td>
+        `;
+        tb.appendChild(tr);
+      });
+
+      const totalPages = Math.ceil(filteredData.length / PAGE_SIZE) || 1;
+      document.getElementById('matrix-page-info').innerText = `Página ${matrixPage} de ${totalPages}`;
+      document.getElementById('matrix-pagination-label').innerText = `Mostrando ${filteredData.length > 0 ? start + 1 : 0} - ${Math.min(end, filteredData.length)} de ${filteredData.length} registros`;
+      document.getElementById('btn-prev-page').disabled = matrixPage <= 1;
+      document.getElementById('btn-next-page').disabled = matrixPage >= totalPages;
+    }
+
+    function prevMatrixPage() { if (matrixPage > 1) { matrixPage--; renderMatrixModule(); } }
+    function nextMatrixPage() { matrixPage++; renderMatrixModule(); }
+
+    function exportFilteredCSV() {
+      if (filteredData.length === 0) return alert("No hay datos para exportar.");
+      let csv = "Fecha,Cliente,Servicio,Turno,Placa,Colaborador,Cargo,Bruto,Adicionales,Descuentos,A Pagar\n";
+      filteredData.forEach(i => {
+        csv += `"${i.f}","${i.c}","${i.s}","${i.t}","${i.p}","${i.n}","${i.r}",${i.bruto},${i.adic},${i.desc},${i.aPagar}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Reporte_Asistencia_HBC_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+  </script>
+</body>
+</html>
