@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal de Control de Gestión, Costos y Operaciones - HBC LOGISTIC S.A.C. (v1.5)</title>
+  
+  <!-- Tipografía Corporativa Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS & SheetJS -->
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    .tab-btn.active {
+      background-color: #ea580c;
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 3px 10px rgba(234, 88, 12, 0.25);
+    }
+    .card-clean {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+      border-radius: 1rem;
+    }
+    .bar-item {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .bar-item:hover {
+      transform: translateY(-3px);
+    }
+    .table-scroll::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .table-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    .table-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .table-scroll::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- ==================== HEADER FIJO CORPORATIVO (COLOR NARANJA HBC) ==================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs px-4 sm:px-6 py-2.5">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-2.5">
+      
+      <!-- Identidad Corporativa -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white font-extrabold text-base shadow-sm shadow-orange-500/20 tracking-wider">
+          HBC
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 leading-none">HBC LOGISTIC S.A.C.</h1>
+            <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">RUC 20606348593</span>
+            <span class="text-[11px] font-bold text-orange-800 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200">v1.5 Operativa & Costo Diario</span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium mt-0.5">Control de Gestión, Costos de Cuadrilla & Reglas Operativas</p>
+        </div>
+      </div>
+
+      <!-- Cuadre Contable & Acciones -->
+      <div class="flex items-center flex-wrap gap-2.5 w-full md:w-auto justify-end">
+        <!-- Bloque de Cuadre Contable -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 flex items-center gap-3 shadow-xs">
+          <div>
+            <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Total A Pagar</span>
+            <span id="header-total-cost" class="text-xs sm:text-sm font-extrabold text-slate-800 tabular-nums">S/ 0.00</span>
+          </div>
+          <div class="h-6 w-px bg-slate-200"></div>
+          <div>
+            <span class="text-[9px] font-bold uppercase tracking-wider text-emerald-600 block">Neto Liquidación</span>
+            <div class="flex items-center gap-1.5">
+              <span id="header-oficial-neto" class="text-xs sm:text-sm font-extrabold text-emerald-700 tabular-nums">S/ 0.00</span>
+              <div class="flex items-center gap-1.5"><span id="status-indicator" class="w-2 h-2 rounded-full bg-slate-300"></span><span id="status-text" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">Pendiente</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botón Cargar Excel (Naranja Corporativo) -->
+        <label for="excel-file" class="cursor-pointer px-3.5 py-2 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 active:bg-orange-800 rounded-xl transition-all shadow-xs shadow-orange-600/20 flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+          <span>Cargar Excel</span>
+          <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
+        </label>
+
+        <!-- Botón Exportar CSV -->
+        <button onclick="exportFilteredCSV()" id="btn-export-csv" class="px-3.5 py-2 text-xs font-bold text-orange-800 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <span>Exportar CSV</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Overlay de Carga -->
+  <div id="loading-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-3 text-center max-w-xs border border-slate-100">
+      <div class="w-8 h-8 border-3 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-sm font-bold text-slate-800">Procesando operaciones...</p>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-5 flex-1 w-full">
+
+    <!-- ZONA EMPTY STATE -->
+    <section id="empty-state-section" class="card-clean border-2 border-dashed border-slate-300 p-10 sm:p-14 text-center space-y-4">
+      <div class="w-14 h-14 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+      </div>
+      <div class="max-w-md mx-auto space-y-1">
+        <h2 class="text-lg font-bold text-slate-900">Portal Operativo & Costo Diario</h2>
+        <p class="text-xs text-slate-500">
+          Sube el archivo Excel de asistencia (hoja ASISTENCIA y LIQUIDACIÓN) para generar el reporte consolidado v1.5.
+        </p>
+      </div>
+      <div>
+        <label for="excel-file-hero" class="cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl transition-all shadow-xs shadow-orange-600/20">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+          <span>Seleccionar archivo Excel</span>
+          <input type="file" id="excel-file-hero" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
+        </label>
+      </div>
+    </section>
+
+    <!-- CONTENEDOR PRINCIPAL: Visible con datos cargados -->
+    <div id="dashboard-content" class="space-y-5 hidden">
+
+      <!-- ==================== FILTROS REACTIVOS ==================== -->
+      <section class="card-clean p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-2.5">
+          <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+            <span class="w-2 h-2 rounded-full bg-orange-600"></span>
+            <span>FILTROS OPERATIVOS MULTIDIMENSIONALES</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="filter-counter" class="text-xs font-semibold px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-lg">0 turnos</span>
+            <button onclick="resetFilters()" class="text-xs text-orange-600 hover:text-orange-800 font-bold hover:underline transition-colors">Limpiar Filtros</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5">
+          <!-- Cliente -->
+          <div>
+            <label for="sel-client" class="block text-[11px] font-bold text-slate-500 mb-1">Cliente</label>
+            <select id="sel-client" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="ALL">Todos los Clientes</option>
+            </select>
+          </div>
+
+          <!-- Puesto -->
+          <div>
+            <label for="sel-cargo" class="block text-[11px] font-bold text-slate-500 mb-1">Puesto / Cargo</label>
+            <select id="sel-cargo" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="ALL">Todos los Puestos</option>
+            </select>
+          </div>
+
+          <!-- Placa -->
+          <div>
+            <label for="sel-placa" class="block text-[11px] font-bold text-slate-500 mb-1">Camión / Placa</label>
+            <select id="sel-placa" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="ALL">Todas las Unidades</option>
+            </select>
+          </div>
+
+          <!-- Servicio -->
+          <div>
+            <label for="sel-service" class="block text-[11px] font-bold text-slate-500 mb-1">Servicio</label>
+            <select id="sel-service" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="ALL">Todos los Servicios</option>
+            </select>
+          </div>
+
+          <!-- Turno -->
+          <div>
+            <label for="sel-turno" class="block text-[11px] font-bold text-slate-500 mb-1">Turno / Horario</label>
+            <select id="sel-turno" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="ALL">Todos los Turnos</option>
+            </select>
+          </div>
+
+          <!-- Flujo / FF -->
+          <div>
+            <label for="sel-flujo" class="block text-[11px] font-bold text-slate-500 mb-1">Flujo / Condición</label>
+            <select id="sel-flujo" onchange="applyFilters()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="ALL">Todos los Flujos</option>
+            </select>
+          </div>
+
+          <!-- Búsqueda -->
+          <div>
+            <label for="inp-search" class="block text-[11px] font-bold text-slate-500 mb-1">Búsqueda Rápida</label>
+            <input type="text" id="inp-search" oninput="applyFilters()" placeholder="Nombre, placa, TMS..." class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500">
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== KPIS GENERALES (4 TARJETAS EJECUTIVAS LIMPIAS) ==================== -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card-clean p-4 border-l-4 border-l-orange-600">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Costo Bruto Asistencia</span>
+          <div class="text-xl font-black text-slate-900 mt-1 tabular-nums" id="kpi-cost">S/ 0.00</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Planilla base calculada</div>
+        </div>
+
+        <div class="card-clean p-4">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Turnos Asistidos</span>
+          <div class="text-xl font-black text-slate-900 mt-1 tabular-nums" id="kpi-count">0 turnos</div>
+          <div class="text-[11px] text-slate-500 mt-0.5" id="kpi-crew">0 Choferes | 0 Auxiliares</div>
+        </div>
+
+        <div class="card-clean p-4">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Costo Promedio / Turno</span>
+          <div class="text-xl font-black text-slate-900 mt-1 tabular-nums" id="kpi-avg">S/ 0.00</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Por colaborador asignado</div>
+        </div>
+
+        <div class="card-clean p-4">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Desviación Neta</span>
+          <div class="text-xl font-black mt-1 tabular-nums" id="kpi-dev">S/ 0.00</div>
+          <div class="text-[10px] text-slate-500 mt-0.5 truncate" id="kpi-dev-sub">Adic: S/ 0 | Desc: S/ 0</div>
+        </div>
+      </section>
+
+      <!-- ==================== COSTO DIARIO: BARRA ESCALONADA CONTINUA ==================== -->
+      <section class="card-clean p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <h3 class="text-sm font-extrabold text-slate-900">Evolución de Costo Diario de Cuadrilla</h3>
+              <span id="daily-days-count" class="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md">0 días</span>
+              <span id="daily-peak-label" class="text-xs font-bold text-orange-700 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200"></span>
+              <span id="daily-total-badge" class="text-xs font-extrabold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-full"></span>
+              <span id="active-day-badge" class="hidden text-xs font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-300"></span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Distribución cronológica escalonada por día. Haz clic en una columna para aislar la fecha.</p>
+          </div>
+          <button id="btn-clear-day" onclick="clearDayFilter()" class="hidden text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg border border-rose-200 transition-colors">
+            ✕ Quitar Filtro de Día
+          </button>
+        </div>
+
+        <!-- Área del Gráfico Escalonado con Guías Horizontales -->
+        <div class="relative bg-slate-50/60 rounded-xl p-3 border border-slate-200/60">
+          <!-- Líneas de Guía de Escala -->
+          <div class="absolute inset-0 flex flex-col justify-between pointer-events-none p-3 pb-8 z-0">
+            <div class="border-b border-dashed border-slate-200 flex justify-end items-center pr-2">
+              <span id="grid-top-label" class="text-[9px] font-mono text-slate-400 bg-white px-1 -translate-y-2 tabular-nums">S/ 0</span>
+            </div>
+            <div class="border-b border-dashed border-slate-200 flex justify-end items-center pr-2">
+              <span id="grid-mid-label" class="text-[9px] font-mono text-slate-400 bg-white px-1 -translate-y-2 tabular-nums">S/ 0</span>
+            </div>
+            <div class="border-b border-slate-200 flex justify-end items-center pr-2">
+              <span class="text-[9px] font-mono text-slate-400 bg-white px-1 -translate-y-2 tabular-nums">S/ 0</span>
+            </div>
+          </div>
+
+          <!-- Contenedor de Barras Escalonadas (Baseline Común) -->
+          <div class="overflow-x-auto table-scroll pb-2 relative z-10">
+            <div id="daily-bars-container" class="flex items-end gap-2 sm:gap-3 h-48 sm:h-56 min-w-[650px] px-2 pt-4">
+              <!-- Se inyecta dinámicamente -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== PESTAÑAS DE NAVEGACIÓN ==================== -->
+      <div class="flex flex-wrap gap-1.5 p-1.5 bg-slate-200/60 rounded-2xl border border-slate-200">
+        <button onclick="navTab('dashboard')" id="btn-tab-dashboard" class="tab-btn active px-4 py-2 rounded-xl text-xs font-bold transition-all">
+          <span class="flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span>Vista General & Costos</span></span>
+        </button>
+        <button onclick="navTab('clientes')" id="btn-tab-clientes" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/50 text-slate-600">
+          <span class="flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg><span>Clientes & Servicios</span></span>
+        </button>
+        <button onclick="navTab('flota')" id="btn-tab-flota" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/50 text-slate-600">
+          <span class="flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8h4l3 3v5a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h2"/></svg><span>Control de Flota</span></span>
+        </button>
+        <button onclick="navTab('personal')" id="btn-tab-personal" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/50 text-slate-600">
+          <span class="flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg><span>Cuadrilla & Pagos</span></span>
+        </button>
+        <button onclick="navTab('matriz')" id="btn-tab-matriz" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/50 text-slate-600">
+          <span class="flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg><span>Explorador de Operaciones</span></span>
+        </button>
+      </div>
+
+      <!-- ==================== MODULO: DASHBOARD ==================== -->
+      <div id="module-dashboard" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Top Clientes -->
+        <div class="card-clean p-5 space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+            <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Top Clientes por Gasto Cuadrilla</h4>
+            <span class="text-[10px] text-slate-400 font-semibold">% Participación</span>
+          </div>
+          <div id="client-progress-container" class="space-y-3 pt-1"></div>
+        </div>
+
+        <!-- Distribución por Cargo -->
+        <div class="card-clean p-5 space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+            <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Distribución por Puesto / Cargo</h4>
+            <span class="text-[10px] text-slate-400 font-semibold">% Sobre Costo Bruto</span>
+          </div>
+          <div id="role-progress-container" class="space-y-3 pt-1"></div>
+        </div>
+      </div>
+
+      <!-- ==================== MODULO: CLIENTES & SERVICIOS ==================== -->
+      <div id="module-clientes" class="card-clean p-5 space-y-4 hidden">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+          <div>
+            <h4 class="text-sm font-extrabold text-slate-900">Catálogo de Servicios y Costo Operativo</h4>
+            <p class="text-xs text-slate-500">Desglose de turnos asignados por servicio logístico y cuenta comercial.</p>
+          </div>
+          <span id="svc-count-badge" class="px-2.5 py-1 text-xs font-bold bg-orange-50 text-orange-700 rounded-lg border border-orange-200">0 Servicios</span>
+        </div>
+        <div class="overflow-x-auto table-scroll">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
+                <th class="py-2.5 px-4">Servicio Logístico</th>
+                <th class="py-2.5 px-4">Cliente Comercial</th>
+                <th class="py-2.5 px-3 text-center">Turnos Realizados</th>
+                <th class="py-2.5 px-4 text-right">Costo Bruto</th>
+                <th class="py-2.5 px-4 text-right">Total A Pagar</th>
+              </tr>
+            </thead>
+            <tbody id="tb-services" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== MODULO: CONTROL DE FLOTA ==================== -->
+      <div id="module-flota" class="space-y-4 hidden">
+        <div class="flex justify-between items-center">
+          <h4 class="text-sm font-extrabold text-slate-900">Control de Unidades y Placas en Operación</h4>
+          <span id="fleet-count-badge" class="text-xs font-bold text-slate-500">0 Placas listadas</span>
+        </div>
+        <div id="fleet-card-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5"></div>
+      </div>
+
+      <!-- ==================== MODULO: CUADRILLA & PERSONAL ==================== -->
+      <div id="module-personal" class="card-clean p-5 space-y-4 hidden">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h4 class="text-sm font-extrabold text-slate-900">Liquidación Individual de Cuadrilla</h4>
+            <p class="text-xs text-slate-500">Detalle de turnos, adicionales y retenciones por colaborador.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="sel-worker-sort" class="text-xs font-bold text-slate-500">Ordenar:</label>
+            <select id="sel-worker-sort" onchange="renderWorkerModule()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-700">
+              <option value="pay">Mayor Monto a Pagar</option>
+              <option value="days">Mayor Cantidad de Turnos</option>
+              <option value="name">Alfabético (A - Z)</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto table-scroll">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
+                <th class="py-2.5 px-4">Colaborador</th>
+                <th class="py-2.5 px-4">Cargos Desempeñados</th>
+                <th class="py-2.5 px-3 text-center">Turnos</th>
+                <th class="py-2.5 px-4 text-right">Costo Bruto</th>
+                <th class="py-2.5 px-4 text-right">Adicionales</th>
+                <th class="py-2.5 px-4 text-right">Descuentos</th>
+                <th class="py-2.5 px-4 text-right font-extrabold text-slate-900">A Pagar Planilla</th>
+              </tr>
+            </thead>
+            <tbody id="tb-workers" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== MODULO: MATRIZ DE OPERACIONES ==================== -->
+      <div id="module-matriz" class="card-clean p-5 space-y-4 hidden">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h4 class="text-sm font-extrabold text-slate-900">Matriz Operativa Detallada</h4>
+            <p class="text-xs text-slate-500" id="matrix-pagination-label">Mostrando 0 registros</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs text-slate-500 font-semibold">Mostrar:</span>
+              <select id="sel-matrix-pagesize" onchange="changeMatrixPageSize()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-700">
+                <option value="15">15</option>
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="btn-prev-page" onclick="prevMatrixPage()" class="px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">Anterior</button>
+              <span id="matrix-page-info" class="text-xs font-semibold text-slate-500">Pág 1</span>
+              <button id="btn-next-page" onclick="nextMatrixPage()" class="px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">Siguiente</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto table-scroll">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
+                <th class="py-2.5 px-3">Fecha</th>
+                <th class="py-2.5 px-3">Cliente</th>
+                <th class="py-2.5 px-3">Servicio</th>
+                <th class="py-2.5 px-2">Turno</th>
+                <th class="py-2.5 px-2">Flujo / Cond.</th>
+                <th class="py-2.5 px-2">Placa</th>
+                <th class="py-2.5 px-2">TMS</th>
+                <th class="py-2.5 px-3">Colaborador</th>
+                <th class="py-2.5 px-2">Cargo</th>
+                <th class="py-2.5 px-2 text-right">Bruto</th>
+                <th class="py-2.5 px-2 text-right">Adic.</th>
+                <th class="py-2.5 px-2 text-right">Desc.</th>
+                <th class="py-2.5 px-3 text-right">A Pagar</th>
+              </tr>
+            </thead>
+            <tbody id="tb-matrix" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==================== SCRIPT DE LOGICA ==================== -->
+  <script>
+    let RAW_DATA = [];
+    let filteredData = [];
+    let OFICIAL_NETO = 0;
+    let matrixPage = 1;
+    let PAGE_SIZE = 50;
+    let selectedDayFilter = null;
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      document.getElementById('loading-overlay').classList.remove('hidden');
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, {type: 'array'});
+
+          // 1. Extraer Monto Neto Oficial de la hoja LIQUIDACIÓN
+          OFICIAL_NETO = 0;
+          if (workbook.SheetNames.includes('LIQUIDACIÓN')) {
+            const liqSheet = workbook.Sheets['LIQUIDACIÓN'];
+            const liqData = XLSX.utils.sheet_to_json(liqSheet, {header: 1});
+            for (let r = 0; r < liqData.length; r++) {
+              for (let c = 0; c < (liqData[r] || []).length; c++) {
+                if (typeof liqData[r][c] === 'string' && liqData[r][c].toUpperCase().trim() === 'MONTO NETO') {
+                   if (liqData[r+1] && liqData[r+1][c] !== undefined) {
+                       const val = liqData[r+1][c];
+                       OFICIAL_NETO = typeof val === 'number' ? val : parseFloat(val.toString().replace(/,/g, ''));
+                   }
+                   break;
+                }
+              }
+              if (OFICIAL_NETO > 0) break;
+            }
+          }
+
+          // 2. Cargar hoja ASISTENCIA
+          const sheetName = workbook.SheetNames.includes('ASISTENCIA') ? 'ASISTENCIA' : workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, {raw: false});
+
+          parseAndLoadData(json);
+        } catch (error) {
+          alert("Error al procesar el archivo Excel. Asegúrate de que el formato sea correcto.");
+          console.error(error);
+        } finally {
+          document.getElementById('loading-overlay').classList.add('hidden');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseAndLoadData(jsonData) {
+      RAW_DATA = [];
+      const clients = new Set();
+      const cargos = new Set();
+      const placas = new Set();
+      const services = new Set();
+      const turnos = new Set();
+      const flujos = new Set();
+
+      const parseNum = (val) => {
+        if (val === undefined || val === null || val === '') return 0;
+        if (typeof val === 'number') return val;
+        const cleaned = val.toString().replace(/,/g, '.').replace(/[^0-9.-]/g, '');
+        return parseFloat(cleaned) || 0;
+      };
+
+      jsonData.forEach(rawRow => {
+        const row = {};
+        for (let key in rawRow) {
+          const cleanKey = key.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "");
+          row[cleanKey] = rawRow[key];
+        }
+
+        const getVal = (keywords, defaultVal = '') => {
+          for (let kw of keywords) {
+            for (let key in row) {
+              if (key.includes(kw)) return row[key];
+            }
+          }
+          return defaultVal;
+        };
+
+        const bruto = parseNum(getVal(['bruto', 'monto'], 0));
+        const adic = parseNum(getVal(['adicional', 'bono', 'extra'], 0));
+        let desc = parseNum(getVal(['desc', 'penalidad', 'multa'], 0));
+        if (desc > 0) desc = -desc;
+
+        let aPagar = parseNum(getVal(['pagar', 'total'], 0));
+        if (aPagar === 0 && (bruto !== 0 || adic !== 0 || desc !== 0)) {
+            aPagar = bruto + adic + desc;
+        }
+
+        const c = getVal(['cliente', 'cuenta'], 'SIN CLIENTE').toString().toUpperCase().trim();
+        const r = getVal(['cargo', 'puesto', 'rol'], 'OTRO').toString().toUpperCase().trim();
+        const p = getVal(['placa', 'camion', 'unidad'], '-').toString().toUpperCase().trim();
+        const s = getVal(['servicio', 'operacion'], 'GENERAL').toString().toUpperCase().trim();
+        const n = getVal(['colaborador', 'nombre', 'personal'], 'Desconocido').toString().trim();
+        const tms = getVal(['tms', 'guia', 'pedido'], '-').toString().trim();
+        const flujo = getVal(['flujo', 'condicion'], 'REGULAR').toString().toUpperCase().trim();
+        let dateStr = getVal(['fecha', 'date', 'dia'], '').toString().trim();
+
+        if (dateStr.toLowerCase().includes('total') || c.includes('TOTAL') || n.toLowerCase().includes('total')) return;
+        if ((n === 'Desconocido' || n === '') && aPagar === 0 && bruto === 0) return;
+
+        const turno = getVal(['turno', 'jornada'], 'DÍA').toString().toUpperCase().trim();
+
+        if (turno.includes('NOCHE') && dateStr) {
+          try {
+            if (typeof getVal(['fecha', 'date'], '') === 'number') {
+              let excelDate = getVal(['fecha', 'date'], '');
+              let jsDate = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+              jsDate.setDate(jsDate.getDate() + 1);
+              dateStr = jsDate.toLocaleDateString('es-PE');
+            } else {
+              let dateParts = dateStr.split(/[-/]/);
+              if (dateParts.length >= 3 && !isNaN(parseInt(dateParts[0]))) {
+                let jsDate = dateParts[0].length === 4
+                  ? new Date(parseInt(dateParts[0]), parseInt(dateParts[1])-1, parseInt(dateParts[2]))
+                  : new Date(parseInt(dateParts[2]), parseInt(dateParts[1])-1, parseInt(dateParts[0]));
+                jsDate.setDate(jsDate.getDate() + 1);
+                dateStr = jsDate.toLocaleDateString('es-PE');
+              }
+            }
+          } catch(e) { console.error("Error corrigiendo fecha de madrugada", e); }
+        }
+
+        clients.add(c);
+        cargos.add(r);
+        if (p !== '-') placas.add(p);
+        services.add(s);
+        if (turno) turnos.add(turno);
+        if (flujo) flujos.add(flujo);
+
+        RAW_DATA.push({ f: dateStr, c, s, t: turno, p, n, r, bruto, adic, desc, aPagar, flujo, tms });
+      });
+
+      populateDropdowns(clients, cargos, placas, services, turnos, flujos);
+
+      document.getElementById('empty-state-section').classList.add('hidden');
+      document.getElementById('dashboard-content').classList.remove('hidden');
+
+      selectedDayFilter = null;
+      resetFilters();
+    }
+
+    function populateDropdowns(clients, cargos, placas, services, turnos, flujos) {
+      const createOptions = (set, defaultText) => {
+        let html = `<option value="ALL">${defaultText}</option>`;
+        Array.from(set).sort().forEach(item => {
+          html += `<option value="${item}">${item}</option>`;
+        });
+        return html;
+      };
+
+      document.getElementById('sel-client').innerHTML = createOptions(clients, 'Todos los Clientes');
+      document.getElementById('sel-cargo').innerHTML = createOptions(cargos, 'Todos los Puestos');
+      document.getElementById('sel-placa').innerHTML = createOptions(placas, 'Todas las Unidades');
+      document.getElementById('sel-service').innerHTML = createOptions(services, 'Todos los Servicios');
+      document.getElementById('sel-turno').innerHTML = createOptions(turnos, 'Todos los Turnos');
+      document.getElementById('sel-flujo').innerHTML = createOptions(flujos, 'Todos los Flujos');
+    }
+
+    function navTab(tabName) {
+      const modules = ['dashboard', 'clientes', 'flota', 'personal', 'matriz'];
+      modules.forEach(m => {
+        document.getElementById('module-' + m).classList.add('hidden');
+        document.getElementById('btn-tab-' + m).classList.remove('active');
+      });
+      document.getElementById('module-' + tabName).classList.remove('hidden');
+      document.getElementById('btn-tab-' + tabName).classList.add('active');
+
+      if (tabName === 'personal') renderWorkerModule();
+      if (tabName === 'clientes') renderServicesModule();
+      if (tabName === 'flota') renderFleetModule();
+      if (tabName === 'matriz') renderMatrixModule();
+    }
+
+    function applyFilters() {
+      const cli = document.getElementById('sel-client').value;
+      const cargo = document.getElementById('sel-cargo').value;
+      const placa = document.getElementById('sel-placa').value;
+      const srv = document.getElementById('sel-service').value;
+      const turno = document.getElementById('sel-turno').value;
+      const flujo = document.getElementById('sel-flujo').value;
+      const q = document.getElementById('inp-search').value.toLowerCase().trim();
+
+      filteredData = RAW_DATA.filter(item => {
+        if (cli !== 'ALL' && item.c !== cli) return false;
+        if (cargo !== 'ALL' && !item.r.includes(cargo)) return false;
+        if (placa !== 'ALL' && item.p !== placa) return false;
+        if (srv !== 'ALL' && item.s !== srv) return false;
+        if (turno !== 'ALL' && item.t !== turno) return false;
+        if (flujo !== 'ALL' && item.flujo !== flujo) return false;
+        if (selectedDayFilter && item.f !== selectedDayFilter) return false;
+        if (q) {
+          const match = item.n.toLowerCase().includes(q) || 
+                        item.p.toLowerCase().includes(q) || 
+                        item.tms.toLowerCase().includes(q) || 
+                        item.s.toLowerCase().includes(q) ||
+                        item.c.toLowerCase().includes(q);
+          if (!match) return false;
+        }
+        return true;
+      });
+
+      matrixPage = 1;
+      updateKPIs();
+      renderDailyCostSection();
+      renderDashboardCharts();
+
+      if (!document.getElementById('module-clientes').classList.contains('hidden')) renderServicesModule();
+      if (!document.getElementById('module-flota').classList.contains('hidden')) renderFleetModule();
+      if (!document.getElementById('module-personal').classList.contains('hidden')) renderWorkerModule();
+      if (!document.getElementById('module-matriz').classList.contains('hidden')) renderMatrixModule();
+    }
+
+    function resetFilters() {
+      document.getElementById('sel-client').value = 'ALL';
+      document.getElementById('sel-cargo').value = 'ALL';
+      document.getElementById('sel-placa').value = 'ALL';
+      document.getElementById('sel-service').value = 'ALL';
+      document.getElementById('sel-turno').value = 'ALL';
+      document.getElementById('sel-flujo').value = 'ALL';
+      document.getElementById('inp-search').value = '';
+      selectedDayFilter = null;
+      applyFilters();
+    }
+
+    function filterByDay(day) {
+      if (selectedDayFilter === day) {
+        selectedDayFilter = null;
+      } else {
+        selectedDayFilter = day;
+      }
+      applyFilters();
+    }
+
+    function clearDayFilter() {
+      selectedDayFilter = null;
+      applyFilters();
+    }
+
+    function formatPEN(val) {
+      return 'S/ ' + Number(val || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function updateKPIs() {
+      const totBruto = filteredData.reduce((acc, i) => acc + i.bruto, 0);
+      const totAdic = filteredData.reduce((acc, i) => acc + i.adic, 0);
+      const totDesc = filteredData.reduce((acc, i) => acc + i.desc, 0);
+      const totAPagar = filteredData.reduce((acc, i) => acc + i.aPagar, 0);
+
+      const count = filteredData.length;
+      const validTurns = filteredData.filter(i => i.bruto > 0).length;
+      const avg = validTurns > 0 ? (totBruto / validTurns) : 0;
+
+      const chCount = filteredData.filter(i => i.r.includes('CONDUCTOR') || i.r.includes('CHOFER')).length;
+      const axCount = filteredData.filter(i => i.r.includes('AUXILIAR')).length;
+
+      // Header Dual
+      document.getElementById('header-total-cost').innerText = formatPEN(totAPagar);
+      document.getElementById('header-oficial-neto').innerText = formatPEN(OFICIAL_NETO);
+
+      const indicator = document.getElementById('status-indicator');
+      if (OFICIAL_NETO > 0) {
+        const diff = Math.abs(totAPagar - OFICIAL_NETO);
+        if (diff < 1.0) {
+          indicator.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        const statusText = document.getElementById('status-text');
+        if (statusText) {
+          if (diff < 1.0) {
+            statusText.innerText = 'Conciliado';
+            statusText.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200';
+          } else {
+            statusText.innerText = `Descuadre S/ ${diff.toFixed(2)}`;
+            statusText.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200';
+          }
+        }
+          indicator.title = 'Conciliación exacta con liquidación';
+        } else {
+          indicator.className = 'w-2 h-2 rounded-full bg-amber-500';
+          indicator.title = `Diferencia de S/ ${diff.toFixed(2)} respecto al Neto Oficial`;
+        }
+      }
+
+      // 4 KPIs
+      document.getElementById('kpi-cost').innerText = formatPEN(totBruto);
+      document.getElementById('kpi-count').innerText = `${count} turnos`;
+      document.getElementById('kpi-crew').innerText = `${chCount} Choferes | ${axCount} Auxiliares`;
+      document.getElementById('kpi-avg').innerText = formatPEN(avg);
+
+      const netDev = totAdic + totDesc;
+      const devEl = document.getElementById('kpi-dev');
+      if (Math.abs(netDev) < 0.001) {
+        devEl.innerText = 'S/ 0.00';
+        devEl.className = 'text-xl font-black mt-1 tabular-nums text-slate-500';
+      } else if (netDev > 0) {
+        devEl.innerText = '+ ' + formatPEN(netDev);
+        devEl.className = 'text-xl font-black mt-1 tabular-nums text-emerald-600';
+      } else {
+        devEl.innerText = '- ' + formatPEN(Math.abs(netDev));
+        devEl.className = 'text-xl font-black mt-1 tabular-nums text-rose-600';
+      }
+
+      document.getElementById('kpi-dev-sub').innerText = `Adic: S/ ${totAdic.toFixed(0)} | Desc: -S/ ${Math.abs(totDesc).toFixed(0)}`;
+      document.getElementById('filter-counter').innerText = `${count} turnos listados`;
+    }
+
+    // ==================== COSTO DIARIO: BARRA ESCALONADA ====================
+    function renderDailyCostSection() {
+      const container = document.getElementById('daily-bars-container');
+      const badge = document.getElementById('active-day-badge');
+      const clearBtn = document.getElementById('btn-clear-day');
+
+      if (selectedDayFilter) {
+        badge.innerText = `Filtrado por Día: ${selectedDayFilter}`;
+        badge.classList.remove('hidden');
+        clearBtn.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+        clearBtn.classList.add('hidden');
+      }
+
+      const daysMap = {};
+      filteredData.forEach(i => {
+        if (!i.f) return;
+        if (!daysMap[i.f]) {
+          daysMap[i.f] = {
+            f: i.f,
+            bruto: 0,
+            aPagar: 0,
+            turnos: 0,
+            adic: 0,
+            desc: 0
+          };
+        }
+        daysMap[i.f].bruto += i.bruto;
+        daysMap[i.f].aPagar += i.aPagar;
+        daysMap[i.f].adic += i.adic;
+        daysMap[i.f].desc += i.desc;
+        daysMap[i.f].turnos++;
+      });
+
+      const parseDateKey = (k) => {
+        const p = k.split('/');
+        return p.length === 3 ? new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])).getTime() : 0;
+      };
+
+      const sortedDays = Object.values(daysMap).sort((a,b) => parseDateKey(a.f) - parseDateKey(b.f));
+      document.getElementById('daily-days-count').innerText = `${sortedDays.length} días`;
+
+      const totDailyAPagar = sortedDays.reduce((acc, d) => acc + d.aPagar, 0);
+      document.getElementById('daily-total-badge').innerText = `Total Período: ${formatPEN(totDailyAPagar)}`;
+
+      if (sortedDays.length === 0) {
+        container.innerHTML = '<div class="text-xs text-slate-400 py-6 text-center w-full">Sin registros diarios para los filtros seleccionados.</div>';
+        return;
+      }
+
+      const maxDaily = Math.max(...sortedDays.map(d => d.aPagar), 1);
+      const peakDay = sortedDays.find(d => d.aPagar === maxDaily);
+      if (peakDay) {
+        document.getElementById('daily-peak-label').innerText = `Pico: ${peakDay.f} (${formatPEN(peakDay.aPagar)})`;
+      } else {
+        document.getElementById('daily-peak-label').innerText = '';
+      }
+
+      const chartCeiling = Math.ceil((maxDaily * 1.15) / 500) * 500;
+      document.getElementById('grid-top-label').innerText = formatPEN(chartCeiling);
+      document.getElementById('grid-mid-label').innerText = formatPEN(chartCeiling / 2);
+
+      const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      container.innerHTML = '';
+
+      sortedDays.forEach(d => {
+        const parts = d.f.split('/');
+        let dayName = '';
+        let shortDate = d.f;
+        if (parts.length === 3) {
+          const dObj = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+          dayName = daysOfWeek[dObj.getDay()];
+          shortDate = `${String(parts[0]).padStart(2,'0')}/${String(parts[1]).padStart(2,'0')}`;
+        }
+
+        const isPeak = d.aPagar === maxDaily;
+        const heightPct = Math.max(8, Math.min(100, Math.round((d.aPagar / chartCeiling) * 100)));
+        const isSelected = (selectedDayFilter === d.f);
+
+        // Barra interactiva escalonada
+        const barWrapper = document.createElement('div');
+        barWrapper.className = `bar-item flex-1 min-w-[36px] sm:min-w-[42px] max-w-[68px] flex flex-col items-center justify-end h-full cursor-pointer group ${isSelected ? 'scale-105' : ''}`;
+        barWrapper.title = `${d.f} (${dayName})
+A Pagar: ${formatPEN(d.aPagar)}
+Turnos: ${d.turnos}
+(Clic para filtrar este día)`;
+        barWrapper.onclick = () => filterByDay(d.f);
+
+        barWrapper.innerHTML = `
+          <!-- Tooltip en Hover con Importe -->
+          <div class="text-[9px] font-mono font-bold text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity mb-1 tabular-nums whitespace-nowrap bg-white px-1.5 py-0.5 rounded shadow-xs border border-slate-200">
+            ${formatPEN(d.aPagar)}
+          </div>
+          <!-- Barra Escalonada -->
+          <div class="w-full rounded-t-lg transition-all relative overflow-hidden shadow-xs ${
+            isSelected 
+              ? 'ring-2 ring-orange-600 bg-orange-600 shadow-orange-500/30' 
+              : (isPeak 
+                  ? 'bg-gradient-to-t from-orange-700 to-amber-500' 
+                  : 'bg-gradient-to-t from-orange-500 to-amber-400 group-hover:brightness-110')
+          }" style="height: ${heightPct}%"></div>
+          <!-- Etiqueta de Fecha en Línea Base -->
+          <div class="text-center mt-2">
+            <div class="text-[10px] font-bold ${isSelected ? 'text-orange-700' : 'text-slate-700'}">${shortDate}</div>
+            <div class="text-[9px] text-slate-400">${dayName}</div>
+          </div>
+        `;
+        container.appendChild(barWrapper);
+      });
+    }
+
+    function renderDashboardCharts() {
+      const cliMap = {};
+      filteredData.forEach(i => { cliMap[i.c] = (cliMap[i.c] || 0) + i.bruto; });
+      const tot = filteredData.reduce((acc, i) => acc + i.bruto, 0) || 1;
+      const sortedCli = Object.entries(cliMap).sort((a,b) => b[1] - a[1]);
+
+      const cliContainer = document.getElementById('client-progress-container');
+      cliContainer.innerHTML = '';
+      sortedCli.slice(0, 8).forEach(([name, cost]) => {
+        const pct = (cost / tot) * 100;
+        const div = document.createElement('div');
+        div.className = "space-y-1";
+        div.innerHTML = `
+          <div class="flex justify-between text-xs font-bold">
+            <span class="text-slate-800">${name}</span>
+            <span class="text-slate-900 tabular-nums">${formatPEN(cost)} <span class="text-slate-400 font-normal">(${pct.toFixed(1)}%)</span></span>
+          </div>
+          <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div style="width: ${pct}%;" class="h-full bg-orange-600 rounded-full"></div>
+          </div>
+        `;
+        cliContainer.appendChild(div);
+      });
+
+      const roleMap = {};
+      filteredData.forEach(i => {
+        const r = i.r || 'OTROS';
+        roleMap[r] = (roleMap[r] || 0) + i.bruto;
+      });
+      const roleContainer = document.getElementById('role-progress-container');
+      roleContainer.innerHTML = '';
+      Object.entries(roleMap).sort((a,b) => b[1] - a[1]).forEach(([role, cost]) => {
+        const pct = (cost / tot) * 100;
+        const div = document.createElement('div');
+        div.className = "space-y-1";
+        div.innerHTML = `
+          <div class="flex justify-between text-xs font-bold">
+            <span class="text-slate-700">${role}</span>
+            <span class="text-slate-900 tabular-nums">${formatPEN(cost)} <span class="text-slate-400 font-normal">(${pct.toFixed(1)}%)</span></span>
+          </div>
+          <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div style="width: ${pct}%;" class="h-full bg-amber-500 rounded-full"></div>
+          </div>
+        `;
+        roleContainer.appendChild(div);
+      });
+    }
+
+    function renderServicesModule() {
+      const sMap = {};
+      filteredData.forEach(i => {
+        const key = i.s;
+        if (!sMap[key]) sMap[key] = { name: i.s, cli: i.c, count: 0, bruto: 0, aPagar: 0, pending: 0 };
+        sMap[key].count++;
+        sMap[key].bruto += i.bruto;
+        sMap[key].aPagar += i.aPagar;
+        if (i.bruto === 0) sMap[key].pending++;
+      });
+
+      const list = Object.values(sMap).sort((a,b) => b.bruto - a.bruto);
+      const tb = document.getElementById('tb-services');
+      tb.innerHTML = '';
+
+      list.forEach(s => {
+        const isZero = s.bruto === 0 && s.pending > 0;
+        const tr = document.createElement('tr');
+        tr.className = isZero ? "bg-rose-50 hover:bg-rose-100" : "hover:bg-slate-50";
+
+        let nameHtml = s.name;
+        if (isZero) {
+          nameHtml += ' <span class="ml-2 text-[9px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold">⚠️ SIN TARIFA</span>';
+        }
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-4 font-bold ${isZero ? 'text-rose-700' : 'text-slate-900'}">${nameHtml}</td>
+          <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">${s.cli}</span></td>
+          <td class="py-2.5 px-3 text-center font-bold">${s.count}</td>
+          <td class="py-2.5 px-4 text-right font-bold text-slate-700 tabular-nums">${formatPEN(s.bruto)}</td>
+          <td class="py-2.5 px-4 text-right font-black ${isZero ? 'text-rose-500' : 'text-slate-900'} tabular-nums">${formatPEN(s.aPagar)}</td>
+        `;
+        tb.appendChild(tr);
+      });
+      document.getElementById('svc-count-badge').innerText = `${list.length} Servicios`;
+    }
+
+    function renderFleetModule() {
+      const fMap = {};
+      filteredData.filter(i => i.p && i.p !== '-').forEach(i => {
+        if (!fMap[i.p]) fMap[i.p] = { plate: i.p, count: 0, bruto: 0 };
+        fMap[i.p].count++;
+        fMap[i.p].bruto += i.bruto;
+      });
+
+      const container = document.getElementById('fleet-card-container');
+      container.innerHTML = '';
+      const list = Object.values(fMap).sort((a,b) => b.bruto - a.bruto);
+
+      list.forEach(f => {
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-2.5`;
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">UNIDAD</span>
+              <div class="text-lg font-black text-slate-900 font-mono">${f.plate}</div>
+            </div>
+            <span class="px-2 py-0.5 text-xs font-bold rounded-lg bg-orange-50 text-orange-700 border border-orange-200">${f.count} Turnos</span>
+          </div>
+          <div class="pt-2 border-t border-slate-100">
+            <span class="text-[9px] uppercase font-semibold text-slate-400">Costo Generado</span>
+            <div class="text-sm font-black text-slate-900 tabular-nums">${formatPEN(f.bruto)}</div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      document.getElementById('fleet-count-badge').innerText = `${list.length} Placas listadas`;
+    }
+
+    function renderWorkerModule() {
+      const wMap = {};
+      filteredData.forEach(i => {
+        if (!i.n) return;
+        if (!wMap[i.n]) wMap[i.n] = { name: i.n, roles: new Set(), count: 0, bruto: 0, adic: 0, desc: 0, aPagar: 0 };
+        wMap[i.n].count++;
+        wMap[i.n].roles.add(i.r);
+        wMap[i.n].bruto += i.bruto;
+        wMap[i.n].adic += i.adic;
+        wMap[i.n].desc += i.desc;
+        wMap[i.n].aPagar += i.aPagar;
+      });
+
+      const sortMode = document.getElementById('sel-worker-sort').value;
+      const list = Object.values(wMap).sort((a,b) => {
+        if (sortMode === 'days') return b.count - a.count;
+        if (sortMode === 'name') return a.name.localeCompare(b.name);
+        return b.aPagar - a.aPagar;
+      });
+
+      const tb = document.getElementById('tb-workers');
+      tb.innerHTML = '';
+      list.forEach((w) => {
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-slate-50 transition-colors`;
+        tr.innerHTML = `
+          <td class="py-2 px-4 font-bold text-slate-900">${w.name}</td>
+          <td class="py-2 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">${Array.from(w.roles).join(', ')}</span></td>
+          <td class="py-2 px-3 text-center font-bold text-slate-900">${w.count}</td>
+          <td class="py-2 px-4 text-right text-slate-600 tabular-nums">${formatPEN(w.bruto)}</td>
+          <td class="py-2 px-4 text-right tabular-nums ${w.adic > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${w.adic > 0 ? '+ ' + formatPEN(w.adic) : '-'}</td>
+          <td class="py-2 px-4 text-right tabular-nums ${w.desc < 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${w.desc < 0 ? '- ' + formatPEN(Math.abs(w.desc)) : '-'}</td>
+          <td class="py-2 px-4 text-right font-black text-slate-900 tabular-nums">${formatPEN(w.aPagar)}</td>
+        `;
+        tb.appendChild(tr);
+      });
+    }
+
+    function renderMatrixModule() {
+      const tb = document.getElementById('tb-matrix');
+      tb.innerHTML = '';
+      const start = (matrixPage - 1) * PAGE_SIZE;
+      const end = start + PAGE_SIZE;
+      const pageData = filteredData.slice(start, end);
+
+      pageData.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition-colors";
+        const isFF = item.flujo === 'FF' || item.flujo.includes('FALSO');
+
+        tr.innerHTML = `
+          <td class="py-2 px-3 text-slate-600 whitespace-nowrap font-medium">${item.f}</td>
+          <td class="py-2 px-3 font-semibold text-slate-800">${item.c}</td>
+          <td class="py-2 px-3 text-slate-700">${item.s}</td>
+          <td class="py-2 px-2 text-slate-600 font-medium">${item.t}</td>
+          <td class="py-2 px-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${isFF ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-600'}">${item.flujo}</span></td>
+          <td class="py-2 px-2 font-mono font-bold text-slate-800">${item.p}</td>
+          <td class="py-2 px-2 font-mono text-[11px] text-slate-500">${item.tms}</td>
+          <td class="py-2 px-3 font-bold text-slate-900">${item.n}</td>
+          <td class="py-2 px-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">${item.r}</span></td>
+          <td class="py-2 px-2 text-right text-slate-500 tabular-nums">${formatPEN(item.bruto)}</td>
+          <td class="py-2 px-2 text-right tabular-nums ${item.adic > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${item.adic > 0 ? '+' + item.adic.toFixed(0) : '-'}</td>
+          <td class="py-2 px-2 text-right tabular-nums ${item.desc < 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${item.desc < 0 ? item.desc.toFixed(0) : '-'}</td>
+          <td class="py-2 px-3 text-right font-black tabular-nums ${item.aPagar === 0 && item.bruto === 0 ? 'text-rose-600' : 'text-slate-900'}">${item.aPagar === 0 && item.bruto === 0 ? '⚠️ Pendiente' : formatPEN(item.aPagar)}</td>
+        `;
+        tb.appendChild(tr);
+      });
+
+      const totalPages = Math.ceil(filteredData.length / PAGE_SIZE) || 1;
+      document.getElementById('matrix-page-info').innerText = `Pág ${matrixPage} de ${totalPages}`;
+      document.getElementById('matrix-pagination-label').innerText = `Mostrando ${filteredData.length > 0 ? start + 1 : 0} - ${Math.min(end, filteredData.length)} de ${filteredData.length} registros`;
+      document.getElementById('btn-prev-page').disabled = matrixPage <= 1;
+      document.getElementById('btn-next-page').disabled = matrixPage >= totalPages;
+    }
+
+    function changeMatrixPageSize() {
+      PAGE_SIZE = parseInt(document.getElementById('sel-matrix-pagesize').value) || 50;
+      matrixPage = 1;
+      renderMatrixModule();
+    }
+
+    function prevMatrixPage() { if (matrixPage > 1) { matrixPage--; renderMatrixModule(); } }
+    function nextMatrixPage() { matrixPage++; renderMatrixModule(); }
+
+    function exportFilteredCSV() {
+      if (filteredData.length === 0) return alert("No hay datos para exportar.");
+      let csv = "Fecha,Cliente,Servicio,Turno,Flujo,Placa,TMS,Colaborador,Cargo,Bruto,Adicionales,Descuentos,A Pagar\n";
+      filteredData.forEach(i => {
+        csv += `"${i.f}","${i.c}","${i.s}","${i.t}","${i.flujo}","${i.p}","${i.tms}","${i.n}","${i.r}",${i.bruto},${i.adic},${i.desc},${i.aPagar}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Reporte_Asistencia_HBC_v1.5_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+  </script>
+</body>
+</html>
